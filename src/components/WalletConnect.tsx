@@ -2,7 +2,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { useAccount, useConnect, useDisconnect, useBalance, useNetwork } from 'wagmi';
+import { 
+  useAccount, 
+  useConnect, 
+  useDisconnect, 
+  useBalance,
+  useChainId
+} from 'wagmi';
 import { metaMask, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 export function WalletConnect() {
@@ -12,7 +18,18 @@ export function WalletConnect() {
   const { data: balance } = useBalance({
     address,
   });
-  const { chain } = useNetwork();
+  const chainId = useChainId();
+  
+  // Map chainId to network name
+  const getNetworkName = (id: number | undefined) => {
+    if (!id) return 'Unknown';
+    const networks: Record<number, string> = {
+      1: 'Ethereum Mainnet',
+      11155111: 'Sepolia',
+      // Add more networks as needed
+    };
+    return networks[id] || `Chain ID: ${id}`;
+  };
 
   React.useEffect(() => {
     if (error) {
@@ -72,7 +89,7 @@ export function WalletConnect() {
             <h3 className="font-semibold">Connected Wallet</h3>
             <p className="text-sm truncate">Address: {address}</p>
             <p className="text-sm">Balance: {balance ? `${balance.formatted} ${balance.symbol}` : 'Loading...'}</p>
-            <p className="text-sm">Network: {chain ? chain.name : 'Unknown'}</p>
+            <p className="text-sm">Network: {getNetworkName(chainId)}</p>
             <p className="text-sm">Connector: {connector?.name || 'Unknown'}</p>
           </div>
           <Button 
