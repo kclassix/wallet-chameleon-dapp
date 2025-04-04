@@ -1,14 +1,14 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
-import { Wallet } from 'lucide-react';
+import { Wallet, FileSignature } from 'lucide-react';
 import { 
   useAccount, 
   useConnect, 
   useDisconnect, 
   useBalance,
-  useChainId
+  useChainId,
+  useSignMessage
 } from 'wagmi';
 import { metaMask, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
@@ -20,10 +20,12 @@ export function WalletConnect() {
     address,
   });
   const chainId = useChainId();
+  const { signMessage, isPending: isSignPending } = useSignMessage();
   
   // Track connected connectors
   const [connectedWallets, setConnectedWallets] = useState<Array<{name: string, address: string}>>([]);
   const [activeWalletIndex, setActiveWalletIndex] = useState<number>(0);
+  const [signatureResults, setSignatureResults] = useState<Record<string, string>>({});
   
   // Map chainId to network name
   const getNetworkName = (id: number | undefined) => {
@@ -98,6 +100,42 @@ export function WalletConnect() {
     }
   };
 
+  const handleSignMessage = async (walletAddress: string, index: number) => {
+    try {
+      // Only sign with active wallet
+      if (index !== activeWalletIndex) {
+        handleSwitchWallet(index);
+        toast({
+          title: "Wallet Switched",
+          description: "Now using this wallet. Please try signing again.",
+        });
+        return;
+      }
+
+      const message = `Hello from my DApp! Signing this message proves you own the address: ${walletAddress}. Timestamp: ${Date.now()}`;
+      
+      const signature = await signMessage({ message });
+      
+      if (signature) {
+        setSignatureResults(prev => ({
+          ...prev,
+          [walletAddress]: signature
+        }));
+        
+        toast({
+          title: "Signature Successful",
+          description: "Message was successfully signed.",
+        });
+      }
+    } catch (signError: any) {
+      toast({
+        variant: "destructive",
+        title: "Signature Failed",
+        description: signError?.message || "Failed to sign message",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="space-y-2">
@@ -166,6 +204,32 @@ export function WalletConnect() {
                     <p className="text-sm">Balance: {balance ? `${balance.formatted} ${balance.symbol}` : 'Loading...'}</p>
                     <p className="text-sm">Network: {getNetworkName(chainId)}</p>
                   </>
+                )}
+                
+                <div className="mt-3 flex items-center justify-between">
+                  <Button
+                    onClick={() => handleSignMessage(wallet.address, index)}
+                    variant="default"
+                    size="sm"
+                    disabled={isSignPending}
+                    className="flex items-center gap-2"
+                  >
+                    <FileSignature className="h-4 w-4" />
+                    {isSignPending && index === activeWalletIndex ? 'Signing...' : 'Sign Message'}
+                  </Button>
+                  
+                  {signatureResults[wallet.address] && (
+                    <p className="text-xs text-green-600">✓ Signed</p>
+                  )}
+                </div>
+                
+                {signatureResults[wallet.address] && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-500 break-all">
+                      <span className="font-semibold">Signature:</span> 
+                      <span className="ml-1">{`${signatureResults[wallet.address].substring(0, 20)}...`}</span>
+                    </p>
+                  </div>
                 )}
               </div>
             ))}
