@@ -20,7 +20,7 @@ export function WalletConnect() {
     address,
   });
   const chainId = useChainId();
-  const { signMessage, isPending: isSignPending } = useSignMessage();
+  const { signMessageAsync, isPending: isSignPending } = useSignMessage();
   
   // Track connected connectors
   const [connectedWallets, setConnectedWallets] = useState<Array<{name: string, address: string}>>([]);
@@ -48,7 +48,6 @@ export function WalletConnect() {
     }
   }, [error]);
 
-  // Update connected wallets when a new wallet is connected
   React.useEffect(() => {
     if (isConnected && address && connector) {
       // Check if this wallet is already in our list
@@ -114,19 +113,20 @@ export function WalletConnect() {
 
       const message = `Hello from my DApp! Signing this message proves you own the address: ${walletAddress}. Timestamp: ${Date.now()}`;
       
-      const signature = await signMessage({ message });
+      const signature = await signMessageAsync({
+        message,
+        account: walletAddress as `0x${string}`
+      });
       
-      if (signature) {
-        setSignatureResults(prev => ({
-          ...prev,
-          [walletAddress]: signature
-        }));
-        
-        toast({
-          title: "Signature Successful",
-          description: "Message was successfully signed.",
-        });
-      }
+      setSignatureResults(prev => ({
+        ...prev,
+        [walletAddress]: signature
+      }));
+      
+      toast({
+        title: "Signature Successful",
+        description: "Message was successfully signed.",
+      });
     } catch (signError: any) {
       toast({
         variant: "destructive",
